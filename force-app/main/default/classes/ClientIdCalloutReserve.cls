@@ -4,10 +4,16 @@
 * @description this calss was built to help replace wv6_getNextavailableClientIdentifier and wv6_reserveClientIdentifier. 
 * These callouts makes a callout directly to DDMI. It skips the call to the reverse proxy at DDMN. 
 *
-* @author Creed Interactive (Andrew Frederick) 2/24/22
+* @author Creed Interactive (Andrew Frederick) March 2022
 */
 public class ClientIdCalloutReserve {
-    
+
+/**
+* FIELDS
+*/
+
+    private static final String METHOD_NAME = 'reservations';
+
 /**
 * INVOCABLE METHODS
 */
@@ -22,10 +28,10 @@ public class ClientIdCalloutReserve {
         try {
 
             HttpRequest request = ClientIdCallout.getClientIdRequest();
+            request.setBody( requestBodyJSON );
 
             ClientIdReserveHttpHandler handler = new ClientIdReserveHttpHandler();
             handler.send( request );
-            handler.checkErrors();
             
             responses.add( handler.getParsedResponse() );
 
@@ -44,21 +50,15 @@ public class ClientIdCalloutReserve {
     public class ClientIdReserveHttpHandler extends HttpHandler {
         
         public override String getEndpoint(){
-            return ClientIdCallout.getHostName() + '/api/v1/client/reservations';
+            return ClientIdCallout.getRequestURL() + '/' + METHOD_NAME;
         }
 
-        public override String getMethod(){
-            return 'GET';
+        protected override String getMethod(){
+            return 'POST';
         }
 
         public ClientIdReserveResponse getParsedResponse(){
             return (ClientIdReserveResponse) JSON.deserialize( parsedResponse.responseBody, ClientIdReserveResponse.class );
-        }
-
-        public override String getErrorMessage(){
-            Map<String, Object> deserialized = (Map<String, Object>) JSON.deserializeUntyped( parsedResponse.responseBody );
-
-            return JSON.serialize( deserialized.get('apiErrorList') );
         }
     }
 

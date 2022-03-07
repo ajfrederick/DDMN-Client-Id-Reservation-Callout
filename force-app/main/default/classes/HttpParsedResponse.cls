@@ -12,11 +12,11 @@ public class HttpParsedResponse {
         set;
     }
 
-    public HttpResponseError[] errors {
+    public HttpParsedResponseError[] errors {
         get {
 
             if( errors == null ){
-                errors = new HttpResponseError[]{};
+                errors = new HttpParsedResponseError[]{};
             }
 
             return errors;

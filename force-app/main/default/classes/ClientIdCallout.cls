@@ -72,19 +72,10 @@ public without sharing class ClientIdCallout {
             throw new InvocableException('Client credentials not found for access token.');
         }
 
-        String requestBody = getAccessTokenRequestBody();
-
-        HttpRequest request = new HttpRequest();
-        request.setMethod('POST');
-        request.setHeader('Content-Type', URL_ENCODED_CONTENT_TYPE);
-        request.setHeader('Content-Length', CONTENT_LENGTH);
-        request.setBody( requestBody );
-
         try {
 
             AccessTokenHttpHandler handler = new AccessTokenHttpHandler();
-            handler.send( request );
-            handler.checkErrors();
+            handler.send( getAccessTokenRequest() );
             
             accessTokenResponse = handler.getParsedResponse();
 
@@ -98,8 +89,16 @@ public without sharing class ClientIdCallout {
 * UTILITY METHODS
 */  
 
-    private static String getAccessTokenRequestBody(){
+    private static HttpRequest getAccessTokenRequest(){
+        HttpRequest request = new HttpRequest();
+        request.setHeader('Content-Type', URL_ENCODED_CONTENT_TYPE);
+        request.setHeader('Content-Length', CONTENT_LENGTH);
+        request.setBody( getAccessTokenRequestBody() );
 
+        return request;
+    }
+
+    private static String getAccessTokenRequestBody(){
         String requestBody = 'grant_type=' + EncodingUtil.urlEncode( GRANT_TYPE, 'UTF-8') + '&';
         requestBody += 'client_id=' + EncodingUtil.urlEncode( getClientId(), 'UTF-8') + '&';
         requestBody += 'client_secret=' + EncodingUtil.urlEncode( getClientSecret(), 'UTF-8') + '&';
@@ -114,11 +113,14 @@ public without sharing class ClientIdCallout {
             throw new InvocableException('Access token not retrieved');
         }
 
+        String csrfToken = getCSRFToken();
+
         HttpRequest request = new HttpRequest();
         request.setHeader('Content-Type', JSON_CONTENT_TYPE );
         request.setHeader('access_token', accessTokenResponse.accessToken );
-        request.setHeader('client_Id', getClientId() );
-        request.setHeader('x-csrf-token', getXCSRFToken() );
+        request.setHeader('client_id', getClientId() );
+        request.setHeader('X_CSRF_TOKEN', csrfToken );
+        request.setHeader('Cookie', 'CSRF_TOKEN=' + csrfToken );
 
         return request;
     }
@@ -127,7 +129,7 @@ public without sharing class ClientIdCallout {
         return isDev ? credential.Access_Token_URL_Dev__c : credential.Access_Token_URL__c;
     }
 
-    public static String getHostName(){
+    public static String getRequestURL(){
         return isDev ? credential.Final_Request_URL_Dev__c : credential.Final_Request_URL__c;
     }
 
@@ -139,12 +141,37 @@ public without sharing class ClientIdCallout {
         return isDev ? credential.Client_Secret_Dev__c : credential.Client_Secret__c;
     }
 
-    private static String getXCSRFToken(){
-        return credential.X_CSRF_Token__c;
-    }
-
     public static Boolean hasAccessToken(){
         return accessTokenResponse != null && accessTokenResponse.hasToken() && !accessTokenResponse.isExpired();
+    }
+
+    public static String getCSRFToken(){
+        String token = getRandomNumberString(7) + '-';
+        token += getRandomAlphaNumbericString(8) + '-';
+        token += getRandomAlphaNumbericString(4) + '-';
+        token += getRandomAlphaNumbericString(4) + '-';
+        token += getRandomAlphaNumbericString(4) + '-';
+        token += getRandomAlphaNumbericString(12);
+        
+        return token;
+    }
+
+    private static String getRandomNumberString( Integer count ){
+        String randomNumber = '';
+
+        for( Integer i = 0; i < count; i++ ){
+            randomNumber += String.valueOf( getRandom0thru9() );
+        }
+
+        return randomNumber;
+    }
+
+    private static String getRandomAlphaNumbericString( Integer count ){
+        return EncodingUtil.convertToHex(Crypto.generateAesKey(128)).substring(0, count);
+    }
+
+    private static Integer getRandom0thru9(){
+        return (Integer) Math.floor( Math.random() * 10 );
     }
 
 /**
@@ -172,13 +199,7 @@ public without sharing class ClientIdCallout {
             response.expiration = getExpiration( deserialized );
 
             return response;
-        }
-
-        public override String getErrorMessage(){
-            //Map<String, Object> deserialized = (Map<String, Object>) JSON.deserializeUntyped( parsed.responseBody );
-
-            return parsedResponse.responseBody;
-        }
+        } 
 
         private String getAccessToken( Map<String, Object> deserialized ){
             return deserialized.containsKey(ACCESS_TOKEN_KEY) ? (String) deserialized.get(ACCESS_TOKEN_KEY) : '';
