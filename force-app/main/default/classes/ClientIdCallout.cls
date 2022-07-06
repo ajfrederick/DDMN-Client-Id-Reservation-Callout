@@ -45,8 +45,7 @@ public without sharing class ClientIdCallout {
 
         try {
             
-            // commented out on 2/25/22 because DDMI UAT is not configured to handle callouts from aaaall the SF IPs
-            isDev = false; //[SELECT IsSandbox FROM Organization LIMIT 1].IsSandbox;
+            isDev = [SELECT IsSandbox FROM Organization LIMIT 1].IsSandbox;
 
         } catch( Exception e ){
             creedint.CreedExceptionHandler handler = new creedint.CreedExceptionHandler(e);
@@ -58,14 +57,18 @@ public without sharing class ClientIdCallout {
     private static final String JSON_CONTENT_TYPE = 'application/json;charset=UTF-8';
 
     private static final String GRANT_TYPE = 'client_credentials';
-    private static final String SCOPE = 'DDMN_IVR_USER';
-
     private static final String CONTENT_LENGTH = '174';
     
 /**
 * ACTION METHODS
 */
 
+    /**
+     * @name getAccessToken
+     * @description gets the access token for the get next available client id and reserve client id callouts
+     * @param none
+     * @return none
+     */
     private static void getAccessToken(){
 
         if( credential == null || getClientId() == null || getClientSecret() == null ){
@@ -77,7 +80,7 @@ public without sharing class ClientIdCallout {
             AccessTokenHttpHandler handler = new AccessTokenHttpHandler();
             handler.send( getAccessTokenRequest() );
             
-            accessTokenResponse = handler.getParsedResponse();
+            accessTokenResponse = handler.getTokenReponse();
 
         } catch( Exception e ){
             creedint.CreedExceptionHandler handler = new creedint.CreedExceptionHandler(e);
@@ -89,24 +92,32 @@ public without sharing class ClientIdCallout {
 * UTILITY METHODS
 */  
 
+    /**
+     * @name getAccessTokenRequest
+     * @description eturns the request object fully loaded with what is required for the access token request
+     * @param none
+     * @return HttpRequest
+     */
     private static HttpRequest getAccessTokenRequest(){
+        String requestBody = 'grant_type=' + EncodingUtil.urlEncode( GRANT_TYPE, 'UTF-8') + '&';
+        requestBody += 'client_id=' + EncodingUtil.urlEncode( getClientId(), 'UTF-8') + '&';
+        requestBody += 'client_secret=' + EncodingUtil.urlEncode( getClientSecret(), 'UTF-8') + '&';
+        requestBody += 'scope=' + EncodingUtil.urlEncode( getScope(), 'UTF-8');
+
         HttpRequest request = new HttpRequest();
         request.setHeader('Content-Type', URL_ENCODED_CONTENT_TYPE);
         request.setHeader('Content-Length', CONTENT_LENGTH);
-        request.setBody( getAccessTokenRequestBody() );
+        request.setBody( requestBody );
 
         return request;
     }
 
-    private static String getAccessTokenRequestBody(){
-        String requestBody = 'grant_type=' + EncodingUtil.urlEncode( GRANT_TYPE, 'UTF-8') + '&';
-        requestBody += 'client_id=' + EncodingUtil.urlEncode( getClientId(), 'UTF-8') + '&';
-        requestBody += 'client_secret=' + EncodingUtil.urlEncode( getClientSecret(), 'UTF-8') + '&';
-        requestBody += 'scope=' + EncodingUtil.urlEncode( SCOPE, 'UTF-8');
-
-        return requestBody;
-    }
-
+    /**
+     * @name getClientIdRequest
+     * @description returns the request object fully loaded with what is required for the base request
+     * @param none
+     * @return HttpRequest
+     */
     public static HttpRequest getClientIdRequest(){
 
         if( !hasAccessToken() ){
@@ -116,35 +127,81 @@ public without sharing class ClientIdCallout {
         String csrfToken = getCSRFToken();
 
         HttpRequest request = new HttpRequest();
-        request.setHeader('Content-Type', JSON_CONTENT_TYPE );
-        request.setHeader('access_token', accessTokenResponse.accessToken );
-        request.setHeader('client_id', getClientId() );
-        request.setHeader('X_CSRF_TOKEN', csrfToken );
-        request.setHeader('Cookie', 'CSRF_TOKEN=' + csrfToken );
+        request.setHeader( 'Content-Type', JSON_CONTENT_TYPE );
+        request.setHeader( 'access_token', accessTokenResponse.accessToken );
+        request.setHeader( 'client_id', getClientId() );
+        request.setHeader( 'X_CSRF_TOKEN', csrfToken );
+        request.setHeader( 'Cookie', 'CSRF_TOKEN=' + csrfToken );
 
         return request;
     }
 
+    /**
+     * @name getAccessTokenURL
+     * @description checks environment then returns the DDMI Idp URL from the credential gathered above
+     * @param none
+     * @return String
+     */
     private static String getAccessTokenURL(){
         return isDev ? credential.Access_Token_URL_Dev__c : credential.Access_Token_URL__c;
     }
 
+    /**
+     * @name getRequestURL
+     * @description checks environment then returns the final request base URL from the credential gathered above
+     * @param none
+     * @return String
+     */
     public static String getRequestURL(){
         return isDev ? credential.Final_Request_URL_Dev__c : credential.Final_Request_URL__c;
     }
 
+    /**
+     * @name getClientId
+     * @description checks environment then returns the DDMI Idp Client Id (nothing to do the client Id request) from the credential gathered above
+     * @param none
+     * @return String
+     */
     private static String getClientId(){
         return isDev ? credential.Client_Id_Dev__c : credential.Client_Id__c;
     }
 
+    /**
+     * @name getClientSecret
+     * @description checks environment then returns the DDMI Idp Client Secret from the credential gathered above
+     * @param none
+     * @return String
+     */
     private static String getClientSecret(){
         return isDev ? credential.Client_Secret_Dev__c : credential.Client_Secret__c;
     }
 
+    /**
+     * @name getScope
+     * @description checks environment then returns the DDMI Idp scope which dictates what we are authorized for. from the credential gathered above
+     * @param none
+     * @return String
+     */
+    private static String getScope(){
+        return credential.Scope__c;
+    }
+
+    /**
+     * @name hasAccessToken
+     * @description checks whether or not we have an access token or that is has expired
+     * @param none
+     * @return Boolean
+     */
     public static Boolean hasAccessToken(){
         return accessTokenResponse != null && accessTokenResponse.hasToken() && !accessTokenResponse.isExpired();
     }
 
+    /**
+     * @name getCSRFToken
+     * @description generates a CSRF token of a specific format. We generate this for the CSRF token and XCSRF token. They must match
+     * @param none
+     * @return String
+     */
     public static String getCSRFToken(){
         String token = getRandomNumberString(7) + '-';
         token += getRandomAlphaNumbericString(8) + '-';
@@ -156,6 +213,12 @@ public without sharing class ClientIdCallout {
         return token;
     }
 
+    /**
+     * @name getRandomNumberString
+     * @description generates a random number string for the CSRF Token
+     * @param Integer count
+     * @return String
+     */
     private static String getRandomNumberString( Integer count ){
         String randomNumber = '';
 
@@ -166,10 +229,22 @@ public without sharing class ClientIdCallout {
         return randomNumber;
     }
 
+    /**
+     * @name getRandomAlphaNumbericString
+     * @description generates a random alpha numeric string for the CSRF Token
+     * @param Integer count
+     * @return String
+     */
     private static String getRandomAlphaNumbericString( Integer count ){
         return EncodingUtil.convertToHex(Crypto.generateAesKey(128)).substring(0, count);
     }
 
+    /**
+     * @name getRandom0thru9
+     * @description returns a random number 0 through 9 for the CSRF Token
+     * @param none
+     * @return String
+     */
     private static Integer getRandom0thru9(){
         return (Integer) Math.floor( Math.random() * 10 );
     }
@@ -191,8 +266,8 @@ public without sharing class ClientIdCallout {
             return 'POST';
         }
 
-        public AccessTokenResponse getParsedResponse(){
-            Map<String, Object> deserialized = (Map<String, Object>) JSON.deserializeUntyped( parsedResponse.responseBody );
+        public AccessTokenResponse getTokenReponse(){
+            Map<String, Object> deserialized = (Map<String, Object>) JSON.deserializeUntyped( getReponseBody() );
 
             AccessTokenResponse response = new AccessTokenResponse();
             response.accessToken = getAccessToken( deserialized );
