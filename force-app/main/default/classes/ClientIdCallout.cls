@@ -27,7 +27,7 @@ public without sharing class ClientIdCallout {
     // client credentials
     private static api_credential__mdt credential;
 
-    private static Boolean isDev;
+    public static Boolean isDev;
 
     /**
     * Static block to set credential and isDev variables;

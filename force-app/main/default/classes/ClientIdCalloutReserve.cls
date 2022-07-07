@@ -48,8 +48,6 @@ public class ClientIdCalloutReserve {
 
         String requestBodyJSON =  JSON.serialize( requestBody );
 
-        System.debug(requestBodyJSON);
-
         ClientIdReserveHttpHandler httpHandler = new ClientIdReserveHttpHandler();
 
         try {
@@ -61,6 +59,7 @@ public class ClientIdCalloutReserve {
 
         } catch( Exception e ){
             creedint.CreedExceptionHandler handler = new creedint.CreedExceptionHandler(e);
+            handler.addMessage( 'Client Id Reserve Request JSON: ' + requestBodyJSON );
             handler.handle();
         }
             
