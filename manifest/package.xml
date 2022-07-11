@@ -8,5 +8,16 @@
         <members>Reserve_Client_Identifier</members>
         <name>FlowDefinition</name>
     </types>
+    <types>
+        <members>DDMIAccessToken</members>
+        <members>DDMIAccessTokenDev</members>
+        <members>DDMIClientIdReservation</members>
+        <members>DDMIClientIdReservationDev</members>
+        <name>RemoteSiteSetting</name>
+    </types>
+    <types>
+        <members>api_credential</members>
+        <name>CustomMetadata</name>
+    </types>
     <version>52.0</version>
 </Package>
