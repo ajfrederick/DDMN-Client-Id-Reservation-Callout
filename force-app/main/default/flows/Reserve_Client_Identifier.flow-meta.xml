@@ -427,6 +427,7 @@
 Update 11/23/2021: Checks to see if SF 2 SF Group # field&apos;s character limit is about to be exceeded and does NOT update that field.
 
 Update 7/5/2022: Callout skips DDMN reverse proxy and calls straight to DDMI api.</description>
+    <environments>Default</environments>
     <formulas>
         <name>frmCurrentUserName</name>
         <dataType>String</dataType>

@@ -16,8 +16,8 @@
         <name>RemoteSiteSetting</name>
     </types>
     <types>
-        <members>api_credential</members>
-        <name>CustomMetadata</name>
+        <members>api_credential__mdt</members>
+        <name>CustomObject</name>
     </types>
     <version>52.0</version>
 </Package>
