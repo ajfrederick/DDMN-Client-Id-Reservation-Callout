@@ -226,6 +226,11 @@ public without sharing class ClientIdCallout {
             randomNumber += String.valueOf( getRandom0thru9() );
         }
 
+        // the ddmi api will mark csrf token as invalid if the first 8 digits are not within the window of these to integer values
+        if( Integer.valueOf(randomNumber) < 1605340 || Integer.valueOf(randomNumber) > 7857652 ){
+            randomNumber = getRandomNumberString(7);
+        }
+
         return randomNumber;
     }
 
